@@ -12,11 +12,18 @@
 #include <QUrl>
 #include <QListWidgetItem>
 #include <QFileInfo>
+#include <QRandomGenerator>
+#include <QTabWidget>
+#include <QFile>
+#include <QTextStream>
+#include <QMessageBox>
 //singeton
 musicplayer* musicplayer::instance = nullptr;
 //coonstruor
 musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     //ui objects intiliazations
+    currentrepeatstate = norepeat;
+    isshuffleon = false;
     songlist = new QListWidget(this);
     playbutton = new QPushButton("play", this);
     pausebutton = new QPushButton("pause", this);
@@ -25,25 +32,46 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     currentsonglabel = new QLabel("none", this);
     nextbutton = new QPushButton("next", this);
     previousbutton = new QPushButton("prevoius", this);
+    repeatbutton = new QPushButton("repeat: no", this);
+    shufflebutton = new QPushButton("shuffle: off", this);
     //audioplayer inialziation
     player = new QMediaPlayer(this);
     audiooutput = new QAudioOutput(this);
     player->setAudioOutput(audiooutput);
     //layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    tabs = new QTabWidget(this);
+
+    // ---------- Main Tab ----------
+    QWidget *mainTab = new QWidget(this);
+    QVBoxLayout *mainTabLayout = new QVBoxLayout(mainTab);
     QHBoxLayout *controls = new QHBoxLayout();
+    controls->addWidget(shufflebutton);
     controls->addWidget(previousbutton);
     controls->addWidget(playbutton);
     controls->addWidget(pausebutton);
     controls->addWidget(stopbutton);
     controls->addWidget(nextbutton);
-    mainLayout->addWidget(new QLabel("songs", this));
-    mainLayout->addWidget(songlist);
-    mainLayout->addWidget(currentsonglabel);
-    mainLayout->addWidget(positionslider);
-    mainLayout->addLayout(controls);
+    controls->addWidget(repeatbutton);
+    addtofavoritebutton = new QPushButton("save", this);
+    mainTabLayout->addWidget(new QLabel("songs", this));
+    mainTabLayout->addWidget(songlist);
+    mainTabLayout->addWidget(addtofavoritebutton);
+    mainTabLayout->addWidget(currentsonglabel);
+    mainTabLayout->addWidget(positionslider);
+    mainTabLayout->addLayout(controls);
+    mainTab->setLayout(mainTabLayout);
+    tabs->addTab(mainTab, "Main");
+    QWidget *favoritesTab = new QWidget(this);
+    QVBoxLayout *favoritesLayout = new QVBoxLayout(favoritesTab);
+    favoritelist = new QListWidget(this);
+    favoritesLayout->addWidget(new QLabel("Favorite Songs", this));
+    favoritesLayout->addWidget(favoritelist);
+    favoritesTab->setLayout(favoritesLayout);
+    tabs->addTab(favoritesTab, "Favorites");
+    mainLayout->addWidget(tabs);
     setLayout(mainLayout);
-    //load songs to list
+    //load songs to list8
     QDir musicDir("D:/Musics");
     if (!musicDir.exists()) {
         qDebug() << "Music directory does not exist!";
@@ -69,10 +97,43 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     connect(previousbutton, &QPushButton::clicked, this, &musicplayer::playprevioussong);
     connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status){
         if (status == QMediaPlayer::EndOfMedia) {
-            currentsonglabel->setText("none");
-            positionslider->setValue(0);
+            if (currentrepeatstate == repeatone) {
+                QListWidgetItem *currentItem = songlist->currentItem();
+                if (currentItem) {
+                    QString filePath = currentItem->data(Qt::UserRole).toString();
+                    if (filePath.isEmpty()) {
+                        filePath = "D:/Musics/" + currentItem->text();
+                    }
+                    player->setSource(QUrl::fromLocalFile(filePath));
+                    player->play();
+                } else {
+                    player->stop();
+                    currentsonglabel->setText("none");
+                    positionslider->setValue(0);
+                }
+            } else if (isshuffleon) {
+                playrandomsong();
+            } else {
+                switch (currentrepeatstate) {
+                case repeatall:
+                    playnextsong();
+                    break;
+                case norepeat:
+                default:
+                    player->stop();
+                    currentsonglabel->setText("None");
+                    positionslider->setValue(0);
+                    break;
+                }
+            }
         }
     });
+    connect(repeatbutton, &QPushButton::clicked, this, &musicplayer::changerepeatstate);
+    connect(shufflebutton, &QPushButton::clicked, this, &musicplayer::shufflestate);
+    connect(addtofavoritebutton, &QPushButton::clicked, this, &musicplayer::savecurrentsongtofavorites);
+    connect(favoritelist, &QListWidget::itemDoubleClicked, this, &musicplayer::playselectedfavoritesong);
+    //bargozary monakhaba
+    loadfavoritesfromfile();
 }
 //singleton
 musicplayer* musicplayer::getinstance() {
@@ -166,3 +227,94 @@ void musicplayer::playnextsong() {
         }
     }
 }
+//taghir halat tekrar
+void musicplayer::changerepeatstate() {
+    // Cycle through states: NoRepeat -> RepeatOne -> RepeatAll -> NoRepeat
+    switch (currentrepeatstate) {
+    case norepeat:
+        currentrepeatstate = repeatone;
+        repeatbutton->setText("Repeat: 1");
+        break;
+    case repeatone:
+        currentrepeatstate = repeatall;
+        repeatbutton->setText("Repeat: all");
+        break;
+    case repeatall:
+        currentrepeatstate = norepeat;
+        repeatbutton->setText("Repeat: no");
+        break;
+    }
+}
+//taghir halat shuffle
+void musicplayer::shufflestate() {
+    isshuffleon = !isshuffleon;
+    if (isshuffleon) {
+        shufflebutton->setText("shuffle: on");
+    } else {
+        shufflebutton->setText("shuffle: off");
+    }
+}
+//pakhs random
+void musicplayer::playrandomsong() {
+    int songcount = songlist->count();
+    if (songcount == 0) {
+        player->stop();
+        currentsonglabel->setText("none");
+        positionslider->setValue(0);
+        return;
+    }
+    int randomindex = QRandomGenerator::global()->bounded(songcount);
+    songlist->setCurrentRow(randomindex);
+    playselectedsongfromlist();
+}
+void musicplayer::savecurrentsongtofavorites() {
+    QListWidgetItem *item = songlist->currentItem();
+    if (!item){
+        return;
+    }
+    QString filePath = item->data(Qt::UserRole).toString();
+    QFile file(favoritesfilepath);
+    if (file.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << filePath << "\n";
+        file.close();
+        QListWidgetItem *favitem = new QListWidgetItem(item->text());
+        favitem->setData(Qt::UserRole, filePath);
+        favoritelist->addItem(favitem);
+    }
+}
+void musicplayer::loadfavoritesfromfile() {
+    QFile file(favoritesfilepath);
+    if (!file.exists()){
+        return;
+    }
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            QFileInfo info(line);
+            if (info.exists()) {
+                QListWidgetItem *item = new QListWidgetItem(info.fileName());
+                item->setData(Qt::UserRole, line);
+                favoritelist->addItem(item);
+            }
+        }
+        file.close();
+    }
+}
+void musicplayer::playselectedfavoritesong() {
+    QListWidgetItem *item = favoritelist->currentItem();
+    if (!item){
+        return;
+    }
+    QString filePath = item->data(Qt::UserRole).toString();
+    if (!QFileInfo::exists(filePath)) {
+        QMessageBox::warning(this, "Error", "File not found.");
+        return;
+    }
+
+    player->setSource(QUrl::fromLocalFile(filePath));
+    player->play();
+    currentsonglabel->setText("playing (favorite): " + item->text());
+}
+
