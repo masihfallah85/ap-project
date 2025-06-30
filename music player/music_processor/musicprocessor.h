@@ -39,12 +39,18 @@ private:
     QMediaPlayer *player;
     QAudioOutput *audiooutput;
     QPushButton *shufflebutton;
-    repeatstate currentrepeatstate;
     bool isshuffleon;
+    bool isshuffleon_fav;
+    repeatstate currentrepeatstate;
+    repeatstate repeatstate_fav;
     QListWidget *favoritelist;
     QPushButton *addtofavoritebutton;
-    QString favoritesfilepath = "favorites.txt";
+    QString favoritesfilepath = "D:/favorites.txt";
     QTabWidget *tabs;
+    QPushButton *fav_playbutton, *fav_pausebutton, *fav_stopbutton;
+    QPushButton *fav_nextbutton, *fav_previousbutton, *fav_repeatbutton;
+    QPushButton *fav_shufflebutton;
+    QSlider *fav_slider;
 private slots:
     void playselectedsong();
     void updateslider(qint64 position);
@@ -59,5 +65,10 @@ private slots:
     void savecurrentsongtofavorites();
     void loadfavoritesfromfile();
     void playselectedfavoritesong();
+    void playselectedfavoritesongfromcontrols();
+    void playnextfavoritesong();
+    void playpreviousfavoritesong();
+    void fav_changerepeatstate();
+    void fav_shufflestate();
 };
 #endif
