@@ -26,6 +26,8 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     repeatstate_fav = norepeat;
     isshuffleon = false;
     isshuffleon_fav = false;
+    repeatstate_temp = norepeat;
+    isshuffleon_temp = false;
     songlist = new QListWidget(this);
     playbutton = new QPushButton("play", this);
     pausebutton = new QPushButton("pause", this);
@@ -43,8 +45,6 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     //layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     tabs = new QTabWidget(this);
-
-    // ---------- Main Tab ----------
     QWidget *mainTab = new QWidget(this);
     QVBoxLayout *mainTabLayout = new QVBoxLayout(mainTab);
     QHBoxLayout *controls = new QHBoxLayout();
@@ -56,9 +56,11 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     controls->addWidget(nextbutton);
     controls->addWidget(repeatbutton);
     addtofavoritebutton = new QPushButton("save", this);
+    temp_addbutton = new QPushButton("save to temp", this);
     mainTabLayout->addWidget(new QLabel("songs", this));
     mainTabLayout->addWidget(songlist);
     mainTabLayout->addWidget(addtofavoritebutton);
+    mainTabLayout->addWidget(temp_addbutton);
     mainTabLayout->addWidget(currentsonglabel);
     mainTabLayout->addWidget(positionslider);
     mainTabLayout->addLayout(controls);
@@ -69,7 +71,6 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     favoritelist = new QListWidget(this);
     favoritesLayout->addWidget(new QLabel("favorite songs", this));
     favoritesLayout->addWidget(favoritelist);
-    // Control buttons for Favorites tab
     QHBoxLayout *fav_controls = new QHBoxLayout();
     fav_shufflebutton = new QPushButton("shuffle: off", this);
     fav_previousbutton = new QPushButton("previous", this);
@@ -89,10 +90,35 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     favoritesLayout->addWidget(fav_slider);
     favoritesLayout->addLayout(fav_controls);
     favoritesTab->setLayout(favoritesLayout);
-    tabs->addTab(favoritesTab, "Favorites");
+    tabs->addTab(favoritesTab, "favorites");
+    QWidget *tempTab = new QWidget(this);
+    QVBoxLayout *tempLayout = new QVBoxLayout(tempTab);
+    tempfavoritelist = new QListWidget(this);
+    temp_slider = new QSlider(Qt::Horizontal, this);
+    QHBoxLayout *temp_controls = new QHBoxLayout();
+    temp_shufflebutton = new QPushButton("shuffle: off", this);
+    temp_previousbutton = new QPushButton("previous", this);
+    temp_playbutton = new QPushButton("play", this);
+    temp_pausebutton = new QPushButton("pause", this);
+    temp_stopbutton = new QPushButton("stop", this);
+    temp_nextbutton = new QPushButton("next", this);
+    temp_repeatbutton = new QPushButton("repeat: no", this);
+    temp_controls->addWidget(temp_shufflebutton);
+    temp_controls->addWidget(temp_previousbutton);
+    temp_controls->addWidget(temp_playbutton);
+    temp_controls->addWidget(temp_pausebutton);
+    temp_controls->addWidget(temp_stopbutton);
+    temp_controls->addWidget(temp_nextbutton);
+    temp_controls->addWidget(temp_repeatbutton);
+    tempLayout->addWidget(new QLabel("temporary list", this));
+    tempLayout->addWidget(tempfavoritelist);
+    tempLayout->addWidget(temp_slider);
+    tempTab->setLayout(tempLayout);
+    tabs->addTab(tempTab, "temporary saves");
+    tempLayout->addLayout(temp_controls);
     mainLayout->addWidget(tabs);
     setLayout(mainLayout);
-    //load songs to list8
+    //load songs to list
     QDir musicDir("D:/Musics");
     if (!musicDir.exists()) {
         qDebug() << "Music directory does not exist!";
@@ -117,18 +143,21 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     connect(nextbutton, &QPushButton::clicked, this, &::musicplayer::playnextsong);
     connect(previousbutton, &QPushButton::clicked, this, &musicplayer::playprevioussong);
     connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status) {
-        if (status != QMediaPlayer::EndOfMedia) return;
+        if (status != QMediaPlayer::EndOfMedia){
+            return;
+        }
         int currentTab = tabs->currentIndex();
         if (currentTab == 0) {
             if (currentrepeatstate == repeatone) {
                 playselectedsongfromlist();
-            } else if (isshuffleon) {
+            }else if (isshuffleon) {
                 playrandomsong();
-            } else {
+            }else {
                 switch (currentrepeatstate) {
                 case repeatall:
                     playnextsong();
                     break;
+                case norepeat:
                 default:
                     player->stop();
                     currentsonglabel->setText("none");
@@ -136,7 +165,8 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
                     break;
                 }
             }
-        } else {
+        }
+        else if (currentTab == 1) {
             if (repeatstate_fav == repeatone) {
                 playselectedfavoritesongfromcontrols();
             } else if (isshuffleon_fav) {
@@ -151,10 +181,36 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
                 case repeatall:
                     playnextfavoritesong();
                     break;
+                case norepeat:
                 default:
                     player->stop();
                     currentsonglabel->setText("none");
                     fav_slider->setValue(0);
+                    break;
+                }
+            }
+        }
+
+        else if (currentTab == 2) {
+            if (repeatstate_temp == repeatone) {
+                playselectedtempfavoritesong();
+            } else if (isshuffleon_temp) {
+                int count = tempfavoritelist->count();
+                if (count > 0) {
+                    int randindex = QRandomGenerator::global()->bounded(count);
+                    tempfavoritelist->setCurrentRow(randindex);
+                    playselectedtempfavoritesong();
+                }
+            } else {
+                switch (repeatstate_temp) {
+                case repeatall:
+                    playnexttempfavoritesong();
+                    break;
+                case norepeat:
+                default:
+                    player->stop();
+                    currentsonglabel->setText("none");
+                    temp_slider->setValue(0);
                     break;
                 }
             }
@@ -174,6 +230,19 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     connect(player, &QMediaPlayer::positionChanged, this, &musicplayer::updateslider);
     connect(player, &QMediaPlayer::durationChanged, this, &musicplayer::setsliderrange);
     connect(fav_slider, &QSlider::sliderMoved, player, &QMediaPlayer::setPosition);
+    connect(temp_addbutton, &QPushButton::clicked, this, &musicplayer::savetotempfavorites);
+    connect(tempfavoritelist, &QListWidget::itemDoubleClicked, this, &musicplayer::playselectedtempfavoritesong);
+    connect(temp_playbutton, &QPushButton::clicked, this, &musicplayer::handletempplaybutton);
+    connect(temp_pausebutton, &QPushButton::clicked, player, &QMediaPlayer::pause);
+    connect(temp_stopbutton, &QPushButton::clicked, player, &QMediaPlayer::stop);
+    connect(temp_nextbutton, &QPushButton::clicked, this, &musicplayer::playnexttempfavoritesong);
+    connect(temp_previousbutton, &QPushButton::clicked, this, &musicplayer::playprevioustempfavoritesong);
+    connect(temp_repeatbutton, &QPushButton::clicked, this, &musicplayer::temp_changerepeatstate);
+    connect(temp_shufflebutton, &QPushButton::clicked, this, &musicplayer::temp_shufflestate);
+    connect(player, &QMediaPlayer::positionChanged, this, &musicplayer::updateslider);
+    connect(player, &QMediaPlayer::durationChanged, this, &musicplayer::setsliderrange);
+    connect(temp_slider, &QSlider::sliderMoved, player, &QMediaPlayer::setPosition);
+    connect(temp_slider, &QSlider::sliderMoved, player, &QMediaPlayer::setPosition);
     //bargozary monakhaba
     loadfavoritesfromfile();
 }
@@ -202,11 +271,15 @@ void musicplayer::updateslider(qint64 position) {
     if (!fav_slider->isSliderDown()) {
         fav_slider->setValue(position);
     }
+    if (!temp_slider->isSliderDown()) {
+        temp_slider->setValue(position);
+    }
 }
 //zaman music ro slider
 void musicplayer::setsliderrange(qint64 duration) {
     positionslider->setRange(0, duration);
     fav_slider->setRange(0, duration);
+    temp_slider->setRange(0, duration);
 }
 //handle dokmeha
 void musicplayer::handleplaybutton() {
@@ -418,4 +491,80 @@ void musicplayer::fav_shufflestate() {
     isshuffleon_fav = !isshuffleon_fav;
     QString text = isshuffleon_fav ? "shuffle: on" : "shuffle: off";
     fav_shufflebutton->setText(text);
+}
+void musicplayer::savetotempfavorites() {
+    QListWidgetItem *item = songlist->currentItem();
+    if (!item){
+        return;
+    }
+    QString filePath = item->data(Qt::UserRole).toString();
+    if (filePath.isEmpty()){
+        filePath = "D:/Musics/" + item->text();
+    }
+    QListWidgetItem *newitem = new QListWidgetItem(item->text());
+    newitem->setData(Qt::UserRole, filePath);
+    tempfavoritelist->addItem(newitem);
+}
+void musicplayer::playselectedtempfavoritesong() {
+    QListWidgetItem *item = tempfavoritelist->currentItem();
+    if (!item){
+        return;
+    }
+    QString filePath = item->data(Qt::UserRole).toString();
+    if (!QFileInfo::exists(filePath)) {
+        return;
+    }
+    player->setSource(QUrl::fromLocalFile(filePath));
+    player->play();
+    currentsonglabel->setText("playing: " + item->text());
+}
+void musicplayer::playnexttempfavoritesong() {
+    int index = tempfavoritelist->currentRow();
+    int next = index + 1;
+    if (next < tempfavoritelist->count()) {
+        tempfavoritelist->setCurrentRow(next);
+        playselectedtempfavoritesong();
+    } else if (tempfavoritelist->count() > 0) {
+        tempfavoritelist->setCurrentRow(0);
+        playselectedtempfavoritesong();
+    }
+}
+void musicplayer::playprevioustempfavoritesong() {
+    int index = tempfavoritelist->currentRow();
+    int prev = index - 1;
+    if (prev >= 0) {
+        tempfavoritelist->setCurrentRow(prev);
+        playselectedtempfavoritesong();
+    } else if (tempfavoritelist->count() > 0) {
+        tempfavoritelist->setCurrentRow(tempfavoritelist->count() - 1);
+        playselectedtempfavoritesong();
+    }
+}
+void musicplayer::temp_changerepeatstate() {
+    switch (repeatstate_temp) {
+    case norepeat:
+        repeatstate_temp = repeatone;
+        temp_repeatbutton->setText("repeat: 1");
+        break;
+    case repeatone:
+        repeatstate_temp = repeatall;
+        temp_repeatbutton->setText("repeat: all");
+        break;
+    case repeatall:
+        repeatstate_temp = norepeat;
+        temp_repeatbutton->setText("repeat: no");
+        break;
+    }
+}
+void musicplayer::temp_shufflestate() {
+    isshuffleon_temp = !isshuffleon_temp;
+    QString text = isshuffleon_temp ? "shuffle: on" : "shuffle: off";
+    temp_shufflebutton->setText(text);
+}
+void musicplayer::handletempplaybutton() {
+    if (player->playbackState() == QMediaPlayer::PausedState) {
+        player->play();
+    } else {
+        playselectedtempfavoritesong();
+    }
 }

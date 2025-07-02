@@ -51,6 +51,14 @@ private:
     QPushButton *fav_nextbutton, *fav_previousbutton, *fav_repeatbutton;
     QPushButton *fav_shufflebutton;
     QSlider *fav_slider;
+    QListWidget *tempfavoritelist;
+    QPushButton *temp_addbutton;
+    QPushButton *temp_playbutton, *temp_pausebutton, *temp_stopbutton;
+    QPushButton *temp_nextbutton, *temp_previousbutton;
+    QPushButton *temp_repeatbutton, *temp_shufflebutton;
+    QSlider *temp_slider;
+    bool isshuffleon_temp;
+    repeatstate repeatstate_temp;
 private slots:
     void playselectedsong();
     void updateslider(qint64 position);
@@ -70,5 +78,12 @@ private slots:
     void playpreviousfavoritesong();
     void fav_changerepeatstate();
     void fav_shufflestate();
+    void savetotempfavorites();
+    void playselectedtempfavoritesong();
+    void playnexttempfavoritesong();
+    void playprevioustempfavoritesong();
+    void temp_changerepeatstate();
+    void temp_shufflestate();
+    void handletempplaybutton();
 };
 #endif
