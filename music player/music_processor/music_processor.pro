@@ -3,11 +3,13 @@ QT += multimedia
 CONFIG += c++17
 
 SOURCES += \
+    accountwidget.cpp \
     main.cpp \
     mainwindow.cpp \
     musicprocessor.cpp
 
 HEADERS += \
+    accountwidget.h \
     mainwindow.h \
     musicprocessor.h
 

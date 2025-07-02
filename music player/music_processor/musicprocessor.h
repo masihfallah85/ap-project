@@ -62,6 +62,8 @@ private:
     QSlider *mainvolumeslider;
     QSlider *favvolumeslider;
     QSlider *tempvolumeslider;
+public slots:
+    void loaduserfavoriteslist(const QStringList &favoritepaths);
 private slots:
     void playselectedsong();
     void updateslider(qint64 position);

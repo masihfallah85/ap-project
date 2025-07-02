@@ -605,3 +605,15 @@ void musicplayer::setvolume(int volume) {
         tempvolumeslider->setValue(volume);
     }
 }
+void musicplayer::loaduserfavoriteslist(const QStringList &favoritepaths) {
+    for (const QString &filePath : favoritepaths) {
+        QFileInfo info(filePath);
+        if (info.exists()) {
+            QListWidgetItem *item = new QListWidgetItem(info.fileName());
+            item->setData(Qt::UserRole, filePath);
+            favoritelist->addItem(item);
+        } else {
+            qDebug() << "favorite file not found during user favorites load: " << filePath;
+        }
+    }
+}
