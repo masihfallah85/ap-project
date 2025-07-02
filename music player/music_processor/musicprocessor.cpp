@@ -42,11 +42,24 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     player = new QMediaPlayer(this);
     audiooutput = new QAudioOutput(this);
     player->setAudioOutput(audiooutput);
+    mainvolumeslider = new QSlider(Qt::Vertical, this);
+    mainvolumeslider->setRange(0, 100);
+    mainvolumeslider->setValue(50);
+    mainvolumeslider->setToolTip("volume");
+    favvolumeslider = new QSlider(Qt::Vertical, this);
+    favvolumeslider->setRange(0, 100);
+    favvolumeslider->setValue(50);
+    favvolumeslider->setToolTip("volume");
+    tempvolumeslider = new QSlider(Qt::Vertical, this);
+    tempvolumeslider->setRange(0, 100);
+    tempvolumeslider->setValue(50);
+    tempvolumeslider->setToolTip("volume");
     //layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     tabs = new QTabWidget(this);
     QWidget *mainTab = new QWidget(this);
-    QVBoxLayout *mainTabLayout = new QVBoxLayout(mainTab);
+    QHBoxLayout *mainTabhorizontalLayout = new QHBoxLayout();
+    QVBoxLayout *mainTabLayout = new QVBoxLayout();
     QHBoxLayout *controls = new QHBoxLayout();
     controls->addWidget(shufflebutton);
     controls->addWidget(previousbutton);
@@ -64,10 +77,13 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     mainTabLayout->addWidget(currentsonglabel);
     mainTabLayout->addWidget(positionslider);
     mainTabLayout->addLayout(controls);
-    mainTab->setLayout(mainTabLayout);
+    mainTabhorizontalLayout->addLayout(mainTabLayout);
+    mainTabhorizontalLayout->addWidget(mainvolumeslider);
+    mainTab->setLayout(mainTabhorizontalLayout);
     tabs->addTab(mainTab, "Main");
     QWidget *favoritesTab = new QWidget(this);
-    QVBoxLayout *favoritesLayout = new QVBoxLayout(favoritesTab);
+    QHBoxLayout *favoritesTabhorizontalLayout = new QHBoxLayout();
+    QVBoxLayout *favoritesLayout = new QVBoxLayout();
     favoritelist = new QListWidget(this);
     favoritesLayout->addWidget(new QLabel("favorite songs", this));
     favoritesLayout->addWidget(favoritelist);
@@ -89,10 +105,13 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     fav_controls->addWidget(fav_repeatbutton);
     favoritesLayout->addWidget(fav_slider);
     favoritesLayout->addLayout(fav_controls);
-    favoritesTab->setLayout(favoritesLayout);
+    favoritesTabhorizontalLayout->addLayout(favoritesLayout);
+    favoritesTabhorizontalLayout->addWidget(favvolumeslider);
+    favoritesTab->setLayout(favoritesTabhorizontalLayout);
     tabs->addTab(favoritesTab, "favorites");
     QWidget *tempTab = new QWidget(this);
-    QVBoxLayout *tempLayout = new QVBoxLayout(tempTab);
+    QHBoxLayout *tempTabhorizontalLayout = new QHBoxLayout();
+    QVBoxLayout *tempLayout = new QVBoxLayout();
     tempfavoritelist = new QListWidget(this);
     temp_slider = new QSlider(Qt::Horizontal, this);
     QHBoxLayout *temp_controls = new QHBoxLayout();
@@ -113,7 +132,10 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     tempLayout->addWidget(new QLabel("temporary list", this));
     tempLayout->addWidget(tempfavoritelist);
     tempLayout->addWidget(temp_slider);
-    tempTab->setLayout(tempLayout);
+    tempLayout->addLayout(temp_controls);
+    tempTabhorizontalLayout->addLayout(tempLayout);
+    tempTabhorizontalLayout->addWidget(tempvolumeslider);
+    tempTab->setLayout(tempTabhorizontalLayout);
     tabs->addTab(tempTab, "temporary saves");
     tempLayout->addLayout(temp_controls);
     mainLayout->addWidget(tabs);
@@ -243,6 +265,9 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     connect(player, &QMediaPlayer::durationChanged, this, &musicplayer::setsliderrange);
     connect(temp_slider, &QSlider::sliderMoved, player, &QMediaPlayer::setPosition);
     connect(temp_slider, &QSlider::sliderMoved, player, &QMediaPlayer::setPosition);
+    connect(mainvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
+    connect(favvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
+    connect(tempvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
     //bargozary monakhaba
     loadfavoritesfromfile();
 }
@@ -566,5 +591,17 @@ void musicplayer::handletempplaybutton() {
         player->play();
     } else {
         playselectedtempfavoritesong();
+    }
+}
+void musicplayer::setvolume(int volume) {
+    audiooutput->setVolume(volume / 100.0f);
+    if (sender() != mainvolumeslider) {
+        mainvolumeslider->setValue(volume);
+    }
+    if (sender() != favvolumeslider) {
+        favvolumeslider->setValue(volume);
+    }
+    if (sender() != tempvolumeslider) {
+        tempvolumeslider->setValue(volume);
     }
 }

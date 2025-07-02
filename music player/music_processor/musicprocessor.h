@@ -59,6 +59,9 @@ private:
     QSlider *temp_slider;
     bool isshuffleon_temp;
     repeatstate repeatstate_temp;
+    QSlider *mainvolumeslider;
+    QSlider *favvolumeslider;
+    QSlider *tempvolumeslider;
 private slots:
     void playselectedsong();
     void updateslider(qint64 position);
@@ -85,5 +88,6 @@ private slots:
     void temp_changerepeatstate();
     void temp_shufflestate();
     void handletempplaybutton();
+    void setvolume(int volume);
 };
 #endif
