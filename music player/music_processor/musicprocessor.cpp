@@ -19,7 +19,8 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QLineEdit>
-#include <QIcon>
+#include <QTcpServer>
+#include <QTcpSocket>
 //singeton
 musicplayer* musicplayer::instance = nullptr;
 //coonstruor
@@ -32,36 +33,15 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     repeatstate_temp = norepeat;
     isshuffleon_temp = false;
     songlist = new QListWidget(this);
-    playbutton = new QPushButton(this);
-    playbutton->setIcon(QIcon(":/icons/play.png"));
-    playbutton->setIconSize(QSize(32, 32));
-    QIcon testIcon(":/icons/play.png");
-    qDebug() << "Testing play.png icon:";
-    qDebug() << "  Is Null:" << testIcon.isNull(); // Should be false
-    qDebug() << "  Actual Size (32x32):" << testIcon.actualSize(QSize(32, 32)); // Should be QSize(32, 32)
-    qDebug() << "  Actual Size (any):" << testIcon.actualSize(testIcon.availableSizes().isEmpty() ? QSize() : testIcon.availableSizes().first()); // Should show a size if available
-    qDebug() << "Play button icon after set, Is Null:" << playbutton->icon().isNull(); // Should be false
-    qDebug() << "Play button icon after set, Actual Size (32x32):" << playbutton->icon().actualSize(QSize(32, 32)); // Should be QSize(32, 32)
-    pausebutton = new QPushButton(this);
-    pausebutton->setIcon(QIcon(":/icons/pause.png"));
-    pausebutton->setIconSize(QSize(32, 32));
-    stopbutton = new QPushButton(this);
-    stopbutton->setIcon(QIcon(":/icons/stop.png"));
-    stopbutton->setIconSize(QSize(32, 32));
+    playbutton = new QPushButton("play", this);
+    pausebutton = new QPushButton("pause", this);
+    stopbutton = new QPushButton("stop", this);
     positionslider = new QSlider(Qt::Horizontal, this);
     currentsonglabel = new QLabel("none", this);
-    nextbutton = new QPushButton( this);
-    nextbutton->setIcon(QIcon(":/icons/next.png"));
-    nextbutton->setIconSize(QSize(32, 32));
-    previousbutton = new QPushButton( this);
-    previousbutton->setIcon(QIcon(":/icons/prevoius.png"));
-    previousbutton->setIconSize(QSize(32, 32));
-    repeatbutton = new QPushButton( this);
-    repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
-    repeatbutton->setIconSize(QSize(32, 32));
-    shufflebutton = new QPushButton( this);
-    shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
-    shufflebutton->setIconSize(QSize(32, 32));
+    nextbutton = new QPushButton("next", this);
+    previousbutton = new QPushButton("prevoius", this);
+    repeatbutton = new QPushButton("repeat: no", this);
+    shufflebutton = new QPushButton("shuffle: off", this);
     //audioplayer inialziation
     player = new QMediaPlayer(this);
     audiooutput = new QAudioOutput(this);
@@ -92,12 +72,8 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     controls->addWidget(stopbutton);
     controls->addWidget(nextbutton);
     controls->addWidget(repeatbutton);
-    addtofavoritebutton = new QPushButton( this);
-    addtofavoritebutton->setIcon(QIcon(":/icons/save.png"));
-    addtofavoritebutton->setIconSize(QSize(32, 32));
-    temp_addbutton = new QPushButton(this);
-    temp_addbutton->setIcon(QIcon(":/icons/temp_save.png"));
-    temp_addbutton->setIconSize(QSize(32, 32));
+    addtofavoritebutton = new QPushButton("save", this);
+    temp_addbutton = new QPushButton("save to temp", this);
     mainTabLayout->addWidget(new QLabel("songs", this));
     mainTabLayout->addWidget(songlist);
     mainTabLayout->addWidget(addtofavoritebutton);
@@ -108,31 +84,7 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     mainTabhorizontalLayout->addLayout(mainTabLayout);
     mainTabhorizontalLayout->addWidget(mainvolumeslider);
     mainTab->setLayout(mainTabhorizontalLayout);
-    QWidget *networkTab = new QWidget(this);
-    QVBoxLayout *networkLayout = new QVBoxLayout(networkTab);
-    QHBoxLayout *networkbuttonsLayout = new QHBoxLayout();
-    serverButton = new QPushButton("start server", this);
-    clientButton = new QPushButton("connect as client", this);
-    networkbuttonsLayout->addWidget(serverButton);
-    networkbuttonsLayout->addWidget(clientButton);
-    networkLayout->addLayout(networkbuttonsLayout);
-    networkstatuslabel = new QLabel("status:", this);
-    networkLayout->addWidget(networkstatuslabel);
-    networkloglist = new QListWidget(this);
-    networkloglist->setMinimumHeight(100);
-    networkLayout->addWidget(new QLabel("network log:", this));
-    networkLayout->addWidget(networkloglist);
-    tabs->addTab(networkTab, "network");
-    networkstatuslabel = new QLabel("status: ", this);
-    networkLayout->addWidget(networkstatuslabel);
-    networkloglist = new QListWidget(this);
-    networkloglist->setMinimumHeight(100);
-    networkLayout->addWidget(new QLabel("network log:", this));
-    networkLayout->addWidget(networkloglist);
-    tabs->addTab(networkTab, "network");
-    tcpserver = new QTcpServer(this);
-    tcpsocket = new QTcpSocket(this);
-    tabs->addTab(mainTab, "main");
+    tabs->addTab(mainTab, "Main");
     QWidget *favoritesTab = new QWidget(this);
     QHBoxLayout *favoritesTabhorizontalLayout = new QHBoxLayout();
     QVBoxLayout *favoritesLayout = new QVBoxLayout();
@@ -140,27 +92,13 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     favoritesLayout->addWidget(new QLabel("favorite songs", this));
     favoritesLayout->addWidget(favoritelist);
     QHBoxLayout *fav_controls = new QHBoxLayout();
-    fav_shufflebutton = new QPushButton( this);
-    fav_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
-    fav_shufflebutton->setIconSize(QSize(32, 32));
-    fav_previousbutton = new QPushButton( this);
-    fav_previousbutton->setIcon(QIcon(":/icons/prevoius.png"));
-    fav_previousbutton->setIconSize(QSize(32, 32));
-    fav_playbutton = new QPushButton( this);
-    fav_playbutton->setIcon(QIcon(":/icons/play.png"));
-    fav_playbutton->setIconSize(QSize(32, 32));
-    fav_pausebutton = new QPushButton( this);
-    fav_pausebutton->setIcon(QIcon(":/icons/pause.png"));
-    fav_pausebutton->setIconSize(QSize(32, 32));
-    fav_stopbutton = new QPushButton( this);
-    fav_stopbutton->setIcon(QIcon(":/icons/stop.png"));
-    fav_stopbutton->setIconSize(QSize(32, 32));
-    fav_nextbutton = new QPushButton( this);
-    fav_nextbutton->setIcon(QIcon(":/icons/next.png"));
-    fav_nextbutton->setIconSize(QSize(32, 32));
-    fav_repeatbutton = new QPushButton( this);
-    fav_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
-    fav_repeatbutton->setIconSize(QSize(32, 32));
+    fav_shufflebutton = new QPushButton("shuffle: off", this);
+    fav_previousbutton = new QPushButton("previous", this);
+    fav_playbutton = new QPushButton("play", this);
+    fav_pausebutton = new QPushButton("pause", this);
+    fav_stopbutton = new QPushButton("stop", this);
+    fav_nextbutton = new QPushButton("next", this);
+    fav_repeatbutton = new QPushButton("repeat: no", this);
     fav_slider = new QSlider(Qt::Horizontal, this);
     fav_controls->addWidget(fav_shufflebutton);
     fav_controls->addWidget(fav_previousbutton);
@@ -181,27 +119,13 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     tempfavoritelist = new QListWidget(this);
     temp_slider = new QSlider(Qt::Horizontal, this);
     QHBoxLayout *temp_controls = new QHBoxLayout();
-    temp_shufflebutton = new QPushButton( this);
-    temp_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
-    temp_shufflebutton->setIconSize(QSize(32, 32));
-    temp_previousbutton = new QPushButton( this);
-    temp_previousbutton->setIcon(QIcon(":/icons/prevoius.png"));
-    temp_previousbutton->setIconSize(QSize(32, 32));
-    temp_playbutton = new QPushButton( this);
-    temp_playbutton->setIcon(QIcon(":/icons/play.png"));
-    temp_playbutton->setIconSize(QSize(32, 32));
-    temp_pausebutton = new QPushButton( this);
-    temp_pausebutton->setIcon(QIcon(":/icons/pause.png"));
-    temp_pausebutton->setIconSize(QSize(32, 32));
-    temp_stopbutton = new QPushButton(this);
-    temp_stopbutton->setIcon(QIcon(":/icons/stop.png"));
-    temp_stopbutton->setIconSize(QSize(32, 32));
-    temp_nextbutton = new QPushButton( this);
-    temp_nextbutton->setIcon(QIcon(":/icons/next.png"));
-    temp_nextbutton->setIconSize(QSize(32, 32));
-    temp_repeatbutton = new QPushButton( this);
-    temp_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
-    temp_repeatbutton->setIconSize(QSize(32, 32));
+    temp_shufflebutton = new QPushButton("shuffle: off", this);
+    temp_previousbutton = new QPushButton("previous", this);
+    temp_playbutton = new QPushButton("play", this);
+    temp_pausebutton = new QPushButton("pause", this);
+    temp_stopbutton = new QPushButton("stop", this);
+    temp_nextbutton = new QPushButton("next", this);
+    temp_repeatbutton = new QPushButton("repeat: no", this);
     temp_controls->addWidget(temp_shufflebutton);
     temp_controls->addWidget(temp_previousbutton);
     temp_controls->addWidget(temp_playbutton);
@@ -220,6 +144,35 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     tempLayout->addLayout(temp_controls);
     mainLayout->addWidget(tabs);
     setLayout(mainLayout);
+    tcpserver = new QTcpServer(this);
+    tcpsocket = new QTcpSocket(this); // Client socket
+    QWidget *networkTab = new QWidget(this);
+    QVBoxLayout *networkLayout = new QVBoxLayout();
+    QHBoxLayout *networkbuttonsLayout = new QHBoxLayout();
+    ipinput = new QLineEdit("127.0.0.1", this);
+    portinput = new QLineEdit("1234", this);
+    portinput->setValidator(new QIntValidator(1, 65535, this));
+    serverbutton = new QPushButton("Start Server", this);
+    clientbutton = new QPushButton("Connect to Server", this);
+    sendfilepathbutton = new QPushButton("Send Current Song", this);
+    playreceivedsongbutton = new QPushButton("Play Received Song", this);
+    networkstatuslabel = new QLabel("Status: Disconnected", this);
+    networkloglist = new QListWidget(this);
+    networkloglist->setMinimumHeight(100);
+    networkbuttonsLayout->addWidget(new QLabel("IP:", this));
+    networkbuttonsLayout->addWidget(ipinput);
+    networkbuttonsLayout->addWidget(new QLabel("Port:", this));
+    networkbuttonsLayout->addWidget(portinput);
+    networkbuttonsLayout->addWidget(serverbutton);
+    networkbuttonsLayout->addWidget(clientbutton);
+    networkLayout->addLayout(networkbuttonsLayout);
+    networkLayout->addWidget(networkstatuslabel);
+    networkLayout->addWidget(sendfilepathbutton);
+    networkLayout->addWidget(playreceivedsongbutton);
+    networkLayout->addWidget(new QLabel("Network Log:", this));
+    networkLayout->addWidget(networkloglist);
+    networkTab->setLayout(networkLayout);
+    tabs->addTab(networkTab, "Network");
     //load songs to list
     QDir musicDir("D:/Musics");
     if (!musicDir.exists()) {
@@ -317,6 +270,11 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
                 }
             }
         }
+        if (status == QMediaPlayer::PlayingState || status == QMediaPlayer::PausedState) {
+            if (player->source().isLocalFile()) {
+                sendsonginfo_slot(); // Call the slot to send song info
+            }
+        }
     });
     connect(repeatbutton, &QPushButton::clicked, this, &musicplayer::changerepeatstate);
     connect(shufflebutton, &QPushButton::clicked, this, &musicplayer::shufflestate);
@@ -348,20 +306,15 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     connect(mainvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
     connect(favvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
     connect(tempvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
-    connect(serverButton, &QPushButton::clicked, this, &musicplayer::startserver);
-    connect(clientButton, &QPushButton::clicked, this, &musicplayer::startclient);
+    connect(serverbutton, &QPushButton::clicked, this, &musicplayer::startserver);
+    connect(clientbutton, &QPushButton::clicked, this, &musicplayer::startclient);
+    connect(sendfilepathbutton, &QPushButton::clicked, this, &musicplayer::sendsonginfo_slot);
+    connect(playreceivedsongbutton, &QPushButton::clicked, this, &musicplayer::playreceivedsong);
     connect(tcpserver, &QTcpServer::newConnection, this, &musicplayer::newconnection);
     connect(tcpsocket, &QTcpSocket::connected, this, &musicplayer::clientConnected);
     connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::clientdisconnected);
     connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
-    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
-    connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status) {
-        if (status == QMediaPlayer::PlayingState || status == QMediaPlayer::PausedState) {
-            if (player->source().isLocalFile()) {
-                sendsonginfo(player->source().toLocalFile());
-            }
-        }
-    });
+    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred), this, &musicplayer::displayerror);
     //bargozary monakhaba
     loadfavoritesfromfile();
 }
@@ -404,7 +357,7 @@ void musicplayer::setsliderrange(qint64 duration) {
 void musicplayer::handleplaybutton() {
     if (player->playbackState() == QMediaPlayer::PausedState) {
         player->play();
-        qDebug() << "resuming play";
+        qDebug() << "Resuming play";
     } else {
         playselectedsongfromlist();
     }
@@ -470,15 +423,15 @@ void musicplayer::changerepeatstate() {
     switch (currentrepeatstate) {
     case norepeat:
         currentrepeatstate = repeatone;
-        repeatbutton->setIcon(QIcon(":/icons/repeat_1.png"));
+        repeatbutton->setText("repeat: 1");
         break;
     case repeatone:
         currentrepeatstate = repeatall;
-        repeatbutton->setIcon(QIcon(":/icons/repeat_all.png"));
+        repeatbutton->setText("repeat: all");
         break;
     case repeatall:
         currentrepeatstate = norepeat;
-        repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
+        repeatbutton->setText("repeat: no");
         break;
     }
 }
@@ -486,9 +439,9 @@ void musicplayer::changerepeatstate() {
 void musicplayer::shufflestate() {
     isshuffleon = !isshuffleon;
     if (isshuffleon) {
-        shufflebutton->setIcon(QIcon(":/icons/shuffle_on.png"));
+        shufflebutton->setText("shuffle: on");
     } else {
-        shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
+        shufflebutton->setText("shuffle: off");
     }
 }
 //pakhs random
@@ -594,25 +547,22 @@ void musicplayer::fav_changerepeatstate() {
     switch (repeatstate_fav) {
     case norepeat:
         repeatstate_fav = repeatone;
-        fav_repeatbutton->setIcon(QIcon(":/icons/repeat_1.png"));
+        fav_repeatbutton->setText("repeat: 1");
         break;
     case repeatone:
         repeatstate_fav = repeatall;
-        fav_repeatbutton->setIcon(QIcon(":/icons/repeat_all.png"));
+        fav_repeatbutton->setText("repeat: all");
         break;
     case repeatall:
         repeatstate_fav = norepeat;
-        fav_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
+        fav_repeatbutton->setText("repeat: no");
         break;
     }
 }
 void musicplayer::fav_shufflestate() {
     isshuffleon_fav = !isshuffleon_fav;
-    if (isshuffleon_fav) {
-        fav_shufflebutton->setIcon(QIcon(":/icons/shuffle_on.png"));
-    } else {
-        fav_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
-    }
+    QString text = isshuffleon_fav ? "shuffle: on" : "shuffle: off";
+    fav_shufflebutton->setText(text);
 }
 void musicplayer::savetotempfavorites() {
     QListWidgetItem *item = songlist->currentItem();
@@ -666,25 +616,22 @@ void musicplayer::temp_changerepeatstate() {
     switch (repeatstate_temp) {
     case norepeat:
         repeatstate_temp = repeatone;
-        temp_repeatbutton->setIcon(QIcon(":/icons/repeat_1.png"));
+        temp_repeatbutton->setText("repeat: 1");
         break;
     case repeatone:
         repeatstate_temp = repeatall;
-        temp_repeatbutton->setIcon(QIcon(":/icons/repeat_all.png"));
+        temp_repeatbutton->setText("repeat: all");
         break;
     case repeatall:
         repeatstate_temp = norepeat;
-        temp_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
+        temp_repeatbutton->setText("repeat: no");
         break;
     }
 }
 void musicplayer::temp_shufflestate() {
     isshuffleon_temp = !isshuffleon_temp;
-    if (isshuffleon_temp) {
-        temp_shufflebutton->setIcon(QIcon(":/icons/shuffle_on.png"));
-    } else {
-        temp_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
-    }
+    QString text = isshuffleon_temp ? "shuffle: on" : "shuffle: off";
+    temp_shufflebutton->setText(text);
 }
 void musicplayer::handletempplaybutton() {
     if (player->playbackState() == QMediaPlayer::PausedState) {
@@ -718,113 +665,109 @@ void musicplayer::loaduserfavoriteslist(const QStringList &favoritepaths) {
     }
 }
 void musicplayer::startserver() {
-    if (!tcpserver->isListening()) {
-        if (tcpserver->listen(QHostAddress::Any, 12345)) {
-            networkstatuslabel->setText("status: Server listening on port 12345");
-            networkloglist->addItem("server started waiting for connection");
-            qDebug() << "server started and listening on port 12345";
-        } else {
-            networkstatuslabel->setText("status: server failed to start");
-            networkloglist->addItem("server failed to start: " + tcpserver->errorString());
-            qDebug() << "server failed to start:" << tcpserver->errorString();
-        }
+    bool ok;
+    quint16 port = portinput->text().toUShort(&ok);
+    if (!ok) {
+        networkstatuslabel->setText("Status: Invalid Port");
+        networkloglist->addItem("Error: Invalid port number.");
+        return;
+    }
+
+    if (tcpserver->listen(QHostAddress::Any, port)) {
+        networkstatuslabel->setText(QString("Status: Server listening on port %1").arg(port));
+        networkloglist->addItem(QString("Server started on port %1").arg(port));
+        serverbutton->setEnabled(false);
+        clientbutton->setEnabled(false);
+        qDebug() << "Server started.";
     } else {
-        networkstatuslabel->setText("status: server already running");
-        networkloglist->addItem("server is already running.");
+        networkstatuslabel->setText("Status: Server failed to start");
+        networkloglist->addItem("Error: Server failed to start: " + tcpserver->errorString());
+        qDebug() << "Server failed to start:" << tcpserver->errorString();
     }
 }
+
 void musicplayer::newconnection() {
-    QTcpSocket *clientSocket = tcpserver->nextPendingConnection();
-    if (clientSocket) {
-        if (tcpsocket->state() == QAbstractSocket::UnconnectedState) {
-            tcpsocket = clientSocket;
-            connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
-            connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::serverdisconnected);
-            connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
-            networkstatuslabel->setText("status: client connected from " + tcpsocket->peerAddress().toString());
-            networkloglist->addItem("client connected: " + tcpsocket->peerAddress().toString());
-            qDebug() << "client connected from" << tcpsocket->peerAddress().toString();
-        } else {
-            clientSocket->disconnectFromHost();
-            clientSocket->deleteLater();
-            networkloglist->addItem("another client tried to connect but failed");
-            qDebug() << "another client tried to connect but failed";
-        }
+    tcpsocket = tcpserver->nextPendingConnection(); // Accept new connection
+    if (tcpsocket) {
+        networkstatuslabel->setText("Status: Client Connected");
+        networkloglist->addItem("New client connected.");
+        connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::serverdisconnected);
+        connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readserverdata);
+        connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred), this, &musicplayer::displayerror);
+        qDebug() << "New client connection established.";
     }
 }
-void musicplayer::startclient() {
-    if (tcpsocket->state() == QAbstractSocket::UnconnectedState) {
-        bool ok;
-        QString ipAddress = QInputDialog::getText(this, tr("Connect to Server"),tr("Server IP address:"), QLineEdit::Normal,"127.0.0.1", &ok);
-        if (ok && !ipAddress.isEmpty()) {
-            networkstatuslabel->setText("status: connecting to " + ipAddress + ":12345");
-            networkloglist->addItem("attempting to connect to " + ipAddress + ":12345");
-            tcpsocket->connectToHost(ipAddress, 12345);
-        } else {
-            networkstatuslabel->setText("status: connection cancelled");
-            networkloglist->addItem("connection to server cancelled");
-        }
-    } else {
-        networkstatuslabel->setText("status: Already connected or attempting to connect");
-        networkloglist->addItem("already connected or attempting to connect");
-    }
-}
-void musicplayer::clientConnected() {
-    networkstatuslabel->setText("status: connected to server");
-    networkloglist->addItem("successfully connected to the server");
-    qDebug() << "client connected to server";
-}
-void musicplayer::clientdisconnected() {
-    networkstatuslabel->setText("status: disconnected from server");
-    networkloglist->addItem("disconnected from the server");
-    qDebug() << "client disconnected from server";
-    tcpsocket->deleteLater();
-    tcpsocket = new QTcpSocket(this);
-    connect(tcpsocket, &QTcpSocket::connected, this, &musicplayer::clientConnected);
-    connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::clientdisconnected);
-    connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
-    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
-}
+
 void musicplayer::serverdisconnected() {
-    networkstatuslabel->setText("status: client disconnected");
-    networkloglist->addItem("a client disconnected from the server");
-    qDebug() << "a client disconnected";
-    tcpsocket->deleteLater();
-    tcpsocket = new QTcpSocket(this);
-    connect(tcpsocket, &QTcpSocket::connected, this, &musicplayer::clientConnected);
-    connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::clientdisconnected);
-    connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
-    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
+    QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
+    if (socket) {
+        networkstatuslabel->setText("Status: Client Disconnected");
+        networkloglist->addItem("Client disconnected.");
+        socket->deleteLater(); // Clean up the disconnected socket
+        qDebug() << "Client disconnected.";
+    }
 }
-void musicplayer::processreceivedsonginfo(const QString& songpath) {
-    QFileInfo fileinfo(songpath);
-    if (fileinfo.exists()) {
-        player->setSource(QUrl::fromLocalFile(songpath));
-        player->play();
-        currentsonglabel->setText("playing: " + fileinfo.fileName());
-        networkloglist->addItem("playing: " + fileinfo.fileName());
-        for (int i = 0; i < songlist->count(); ++i) {
-            QListWidgetItem *item = songlist->item(i);
-            if (item->data(Qt::UserRole).toString() == songpath) {
-                songlist->setCurrentItem(item);
-                break;
-            }
+
+void musicplayer::readserverdata() {
+    QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
+    if (socket) {
+        QByteArray data = socket->readAll();
+        QString readmessage = QString::fromUtf8(data).trimmed();
+        networkloglist->addItem("Received (Server): " + readmessage);
+        qDebug() << "Received from client: " << readmessage;
+
+        if (readmessage.startsWith("song_path:")) {
+            QString songPath = readmessage.mid(QString("song_path:").length()).trimmed();
+            processreceivedsonginfo(songPath);
         }
-    } else {
-        networkloglist->addItem("received song file not found: " + songpath);
-        qDebug() << "received song file not found locally:" << songpath;
     }
 }
-void musicplayer::sendsonginfo(const QString& songpath) {
-    if (tcpsocket->state() == QAbstractSocket::ConnectedState) {
-        QString message = "song_path:" + songpath;
-        tcpsocket->write(message.toUtf8());
-        networkloglist->addItem("sent: " + message);
-        qDebug() << "sent song info:" << message;
-    } else {
-        qDebug() << "cannot send song info: not connected";
+
+void musicplayer::startclient() {
+    QString ipAddress = ipinput->text();
+    bool ok;
+    quint16 port = portinput->text().toUShort(&ok);
+    if (!ok) {
+        networkstatuslabel->setText("Status: Invalid Port");
+        networkloglist->addItem("Error: Invalid port number.");
+        return;
+    }
+
+    networkstatuslabel->setText("Status: Connecting...");
+    tcpsocket->connectToHost(ipAddress, port);
+    qDebug() << "Attempting to connect to" << ipAddress << ":" << port;
+}
+
+void musicplayer::clientConnected() {
+    networkstatuslabel->setText("Status: Connected to Server");
+    networkloglist->addItem("Connected to server.");
+    clientbutton->setEnabled(false);
+    serverbutton->setEnabled(false);
+    qDebug() << "Connected to server.";
+}
+
+void musicplayer::clientdisconnected() {
+    networkstatuslabel->setText("Status: Disconnected");
+    networkloglist->addItem("Disconnected from server.");
+    // Re-enable buttons only if client was connected.
+    clientbutton->setEnabled(true);
+    serverbutton->setEnabled(true);
+    tcpsocket->close();
+    qDebug() << "Disconnected from server.";
+}
+
+void musicplayer::readclientdata() {
+    QByteArray data = tcpsocket->readAll();
+    QString readmessage = QString::fromUtf8(data).trimmed();
+    networkloglist->addItem("Received (Client): " + readmessage);
+    qDebug() << "Received from server: " << readmessage;
+
+    if (readmessage.startsWith("song_path:")) {
+        QString songPath = readmessage.mid(QString("song_path:").length()).trimmed();
+        processreceivedsonginfo(songPath);
     }
 }
+
 void musicplayer::displayerror(QAbstractSocket::SocketError socketerror) {
     QString errorstring;
     switch (socketerror) {
@@ -843,17 +786,65 @@ void musicplayer::displayerror(QAbstractSocket::SocketError socketerror) {
     default:
         errorstring = tcpsocket->errorString();
     }
-    networkstatuslabel->setText("status: error - " + errorstring);
-    networkloglist->addItem("network error: " + errorstring);
-    qDebug() << "network error:" << errorstring;
+    networkstatuslabel->setText("Status: Error - " + errorstring);
+    networkloglist->addItem("Network Error: " + errorstring);
+    qDebug() << "Network Error:" << errorstring;
 }
-void musicplayer::readclientdata() {
-    QByteArray data = tcpsocket->readAll();
-    QString readmessage = QString::fromUtf8(data).trimmed();
-    networkloglist->addItem("Received: " + readmessage);
-    qDebug() << "received from network:" << readmessage;
-    if (readmessage.startsWith("song_path:")) {
-        QString songpath = readmessage.mid(QString("song_path:").length());
-        processreceivedsonginfo(songpath);
+
+void musicplayer::sendsonginfo_slot() {
+    QListWidgetItem *item = songlist->currentItem();
+    if (!item) {
+        networkloglist->addItem("Error: No song selected to send.");
+        qDebug() << "Cannot send song info: No song selected.";
+        return;
+    }
+
+    QString filePath = item->data(Qt::UserRole).toString();
+    if (filePath.isEmpty()) {
+        filePath = "D:/Musics/" + item->text();
+    }
+
+    if (tcpsocket->state() == QTcpSocket::ConnectedState) {
+        QString message = "song_path:" + filePath;
+        tcpsocket->write(message.toUtf8());
+        networkloglist->addItem("Sent: " + message);
+        qDebug() << "Sent song info:" << message;
+    } else {
+        networkloglist->addItem("Error: Not connected to send song info.");
+        qDebug() << "Cannot send song info: Not connected.";
+    }
+}
+void musicplayer::processreceivedsonginfo(const QString& songpath) {
+    QFileInfo fileinfo(songpath);
+    if (fileinfo.exists()) {
+        lastReceivedSongPath = songpath; // Store the path
+        networkloglist->addItem("Received song (local): " + fileinfo.fileName() + " (Click 'Play Received Song' to play)");
+        networkstatuslabel->setText("Status: Song received - " + fileinfo.fileName());
+        playreceivedsongbutton->setEnabled(true); // Enable button to play
+        qDebug() << "Received song and found locally:" << songpath;
+        for (int i = 0; i < songlist->count(); ++i) {
+            QListWidgetItem *item = songlist->item(i);
+            if (item->data(Qt::UserRole).toString() == songpath) {
+                songlist->setCurrentItem(item);
+                break;
+            }
+        }
+    } else {
+        networkloglist->addItem("Received song file not found: " + songpath);
+        networkstatuslabel->setText("Status: Received song not found locally.");
+        playreceivedsongbutton->setEnabled(false); // Disable if not found
+        qDebug() << "Received song file not found locally:" << songpath;
+    }
+}
+void musicplayer::playreceivedsong() {
+    if (!lastReceivedSongPath.isEmpty() && QFileInfo::exists(lastReceivedSongPath)) {
+        player->setSource(QUrl::fromLocalFile(lastReceivedSongPath));
+        player->play();
+        currentsonglabel->setText("playing received: " + QFileInfo(lastReceivedSongPath).fileName());
+        networkloglist->addItem("Playing received song: " + QFileInfo(lastReceivedSongPath).fileName());
+        qDebug() << "Playing received song: " << lastReceivedSongPath;
+    } else {
+        networkloglist->addItem("Error: No valid received song to play.");
+        qDebug() << "No valid received song path to play.";
     }
 }

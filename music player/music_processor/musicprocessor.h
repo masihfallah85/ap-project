@@ -2,11 +2,9 @@
 #define MUSICPROCESSOR_H
 #include <QWidget>
 #include <QAudioDevice>
-#include <QTcpServer>
-#include <QTcpSocket>
-#include <QHostAddress>
-//bejaye incldue kardan bagyeh classha
-QT_BEGIN_NAMESPACE
+#include <QAbstractSocket>
+    //bejaye incldue kardan bagyeh classha
+    QT_BEGIN_NAMESPACE
 class QListWidget;
 class QPushButton;
 class QSlider;
@@ -14,6 +12,9 @@ class QLabel;
 class QMediaPlayer;
 class QAudioOutput;
 class QTabWidget;
+class QTcpServer;
+class QTcpSocket;
+class QLineEdit;
 QT_END_NAMESPACE
 
 //class pardazesh music
@@ -67,10 +68,15 @@ private:
     QSlider *tempvolumeslider;
     QTcpServer *tcpserver;
     QTcpSocket *tcpsocket;
-    QPushButton *serverButton;
-    QPushButton *clientButton;
     QLabel *networkstatuslabel;
     QListWidget *networkloglist;
+    QPushButton *serverbutton;
+    QPushButton *clientbutton;
+    QLineEdit *ipinput;
+    QLineEdit *portinput;
+    QPushButton *sendfilepathbutton;
+    QPushButton *playreceivedsongbutton;
+    QString lastReceivedSongPath;
 public slots:
     void loaduserfavoriteslist(const QStringList &favoritepaths);
 private slots:
@@ -101,14 +107,17 @@ private slots:
     void handletempplaybutton();
     void setvolume(int volume);
     void startserver();
-    void startclient();
     void newconnection();
-    void readclientdata();
+    void serverdisconnected();
+    void readserverdata();
+    void startclient();
     void clientConnected();
     void clientdisconnected();
-    void serverdisconnected();
-    void displayerror(QAbstractSocket::SocketError socketError);
-    void sendsonginfo(const QString& songPath);
-    void processreceivedsonginfo(const QString& songPath);
+    void readclientdata();
+    void displayerror(QAbstractSocket::SocketError socketerror);
+    void sendsonginfo_slot();
+    void processreceivedsonginfo(const QString& songpath);
+    void playreceivedsong();
+
 };
 #endif
