@@ -2,6 +2,9 @@
 #define MUSICPROCESSOR_H
 #include <QWidget>
 #include <QAudioDevice>
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QHostAddress>
 //bejaye incldue kardan bagyeh classha
 QT_BEGIN_NAMESPACE
 class QListWidget;
@@ -62,6 +65,12 @@ private:
     QSlider *mainvolumeslider;
     QSlider *favvolumeslider;
     QSlider *tempvolumeslider;
+    QTcpServer *tcpserver;
+    QTcpSocket *tcpsocket;
+    QPushButton *serverButton;
+    QPushButton *clientButton;
+    QLabel *networkstatuslabel;
+    QListWidget *networkloglist;
 public slots:
     void loaduserfavoriteslist(const QStringList &favoritepaths);
 private slots:
@@ -91,5 +100,15 @@ private slots:
     void temp_shufflestate();
     void handletempplaybutton();
     void setvolume(int volume);
+    void startserver();
+    void startclient();
+    void newconnection();
+    void readclientdata();
+    void clientConnected();
+    void clientdisconnected();
+    void serverdisconnected();
+    void displayerror(QAbstractSocket::SocketError socketError);
+    void sendsonginfo(const QString& songPath);
+    void processreceivedsonginfo(const QString& songPath);
 };
 #endif

@@ -17,6 +17,8 @@
 #include <QFile>
 #include <QTextStream>
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QLineEdit>
 //singeton
 musicplayer* musicplayer::instance = nullptr;
 //coonstruor
@@ -80,7 +82,31 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     mainTabhorizontalLayout->addLayout(mainTabLayout);
     mainTabhorizontalLayout->addWidget(mainvolumeslider);
     mainTab->setLayout(mainTabhorizontalLayout);
-    tabs->addTab(mainTab, "Main");
+    QWidget *networkTab = new QWidget(this);
+    QVBoxLayout *networkLayout = new QVBoxLayout(networkTab);
+    QHBoxLayout *networkbuttonsLayout = new QHBoxLayout();
+    serverButton = new QPushButton("start server", this);
+    clientButton = new QPushButton("connect as client", this);
+    networkbuttonsLayout->addWidget(serverButton);
+    networkbuttonsLayout->addWidget(clientButton);
+    networkLayout->addLayout(networkbuttonsLayout);
+    networkstatuslabel = new QLabel("status:", this);
+    networkLayout->addWidget(networkstatuslabel);
+    networkloglist = new QListWidget(this);
+    networkloglist->setMinimumHeight(100);
+    networkLayout->addWidget(new QLabel("network log:", this));
+    networkLayout->addWidget(networkloglist);
+    tabs->addTab(networkTab, "network");
+    networkstatuslabel = new QLabel("status: ", this);
+    networkLayout->addWidget(networkstatuslabel);
+    networkloglist = new QListWidget(this);
+    networkloglist->setMinimumHeight(100);
+    networkLayout->addWidget(new QLabel("network log:", this));
+    networkLayout->addWidget(networkloglist);
+    tabs->addTab(networkTab, "network");
+    tcpserver = new QTcpServer(this);
+    tcpsocket = new QTcpSocket(this);
+    tabs->addTab(mainTab, "main");
     QWidget *favoritesTab = new QWidget(this);
     QHBoxLayout *favoritesTabhorizontalLayout = new QHBoxLayout();
     QVBoxLayout *favoritesLayout = new QVBoxLayout();
@@ -268,6 +294,20 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     connect(mainvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
     connect(favvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
     connect(tempvolumeslider, &QSlider::valueChanged, this, &musicplayer::setvolume);
+    connect(serverButton, &QPushButton::clicked, this, &musicplayer::startserver);
+    connect(clientButton, &QPushButton::clicked, this, &musicplayer::startclient);
+    connect(tcpserver, &QTcpServer::newConnection, this, &musicplayer::newconnection);
+    connect(tcpsocket, &QTcpSocket::connected, this, &musicplayer::clientConnected);
+    connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::clientdisconnected);
+    connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
+    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
+    connect(player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status) {
+        if (status == QMediaPlayer::PlayingState || status == QMediaPlayer::PausedState) {
+            if (player->source().isLocalFile()) {
+                sendsonginfo(player->source().toLocalFile());
+            }
+        }
+    });
     //bargozary monakhaba
     loadfavoritesfromfile();
 }
@@ -615,5 +655,145 @@ void musicplayer::loaduserfavoriteslist(const QStringList &favoritepaths) {
         } else {
             qDebug() << "favorite file not found during user favorites load: " << filePath;
         }
+    }
+}
+void musicplayer::startserver() {
+    if (!tcpserver->isListening()) {
+        if (tcpserver->listen(QHostAddress::Any, 12345)) {
+            networkstatuslabel->setText("status: Server listening on port 12345");
+            networkloglist->addItem("server started waiting for connection");
+            qDebug() << "server started and listening on port 12345";
+        } else {
+            networkstatuslabel->setText("status: server failed to start");
+            networkloglist->addItem("server failed to start: " + tcpserver->errorString());
+            qDebug() << "server failed to start:" << tcpserver->errorString();
+        }
+    } else {
+        networkstatuslabel->setText("status: server already running");
+        networkloglist->addItem("server is already running.");
+    }
+}
+void musicplayer::newconnection() {
+    QTcpSocket *clientSocket = tcpserver->nextPendingConnection();
+    if (clientSocket) {
+        if (tcpsocket->state() == QAbstractSocket::UnconnectedState) {
+            tcpsocket = clientSocket;
+            connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
+            connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::serverdisconnected);
+            connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
+            networkstatuslabel->setText("status: client connected from " + tcpsocket->peerAddress().toString());
+            networkloglist->addItem("client connected: " + tcpsocket->peerAddress().toString());
+            qDebug() << "client connected from" << tcpsocket->peerAddress().toString();
+        } else {
+            clientSocket->disconnectFromHost();
+            clientSocket->deleteLater();
+            networkloglist->addItem("another client tried to connect but failed");
+            qDebug() << "another client tried to connect but failed";
+        }
+    }
+}
+void musicplayer::startclient() {
+    if (tcpsocket->state() == QAbstractSocket::UnconnectedState) {
+        bool ok;
+        QString ipAddress = QInputDialog::getText(this, tr("Connect to Server"),tr("Server IP address:"), QLineEdit::Normal,"127.0.0.1", &ok);
+        if (ok && !ipAddress.isEmpty()) {
+            networkstatuslabel->setText("status: connecting to " + ipAddress + ":12345");
+            networkloglist->addItem("attempting to connect to " + ipAddress + ":12345");
+            tcpsocket->connectToHost(ipAddress, 12345);
+        } else {
+            networkstatuslabel->setText("status: connection cancelled");
+            networkloglist->addItem("connection to server cancelled");
+        }
+    } else {
+        networkstatuslabel->setText("status: Already connected or attempting to connect");
+        networkloglist->addItem("already connected or attempting to connect");
+    }
+}
+void musicplayer::clientConnected() {
+    networkstatuslabel->setText("status: connected to server");
+    networkloglist->addItem("successfully connected to the server");
+    qDebug() << "client connected to server";
+}
+void musicplayer::clientdisconnected() {
+    networkstatuslabel->setText("status: disconnected from server");
+    networkloglist->addItem("disconnected from the server");
+    qDebug() << "client disconnected from server";
+    tcpsocket->deleteLater();
+    tcpsocket = new QTcpSocket(this);
+    connect(tcpsocket, &QTcpSocket::connected, this, &musicplayer::clientConnected);
+    connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::clientdisconnected);
+    connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
+    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
+}
+void musicplayer::serverdisconnected() {
+    networkstatuslabel->setText("status: client disconnected");
+    networkloglist->addItem("a client disconnected from the server");
+    qDebug() << "a client disconnected";
+    tcpsocket->deleteLater();
+    tcpsocket = new QTcpSocket(this);
+    connect(tcpsocket, &QTcpSocket::connected, this, &musicplayer::clientConnected);
+    connect(tcpsocket, &QTcpSocket::disconnected, this, &musicplayer::clientdisconnected);
+    connect(tcpsocket, &QTcpSocket::readyRead, this, &musicplayer::readclientdata);
+    connect(tcpsocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),this, &musicplayer::displayerror);
+}
+void musicplayer::processreceivedsonginfo(const QString& songpath) {
+    QFileInfo fileinfo(songpath);
+    if (fileinfo.exists()) {
+        player->setSource(QUrl::fromLocalFile(songpath));
+        player->play();
+        currentsonglabel->setText("playing: " + fileinfo.fileName());
+        networkloglist->addItem("playing: " + fileinfo.fileName());
+        for (int i = 0; i < songlist->count(); ++i) {
+            QListWidgetItem *item = songlist->item(i);
+            if (item->data(Qt::UserRole).toString() == songpath) {
+                songlist->setCurrentItem(item);
+                break;
+            }
+        }
+    } else {
+        networkloglist->addItem("received song file not found: " + songpath);
+        qDebug() << "received song file not found locally:" << songpath;
+    }
+}
+void musicplayer::sendsonginfo(const QString& songpath) {
+    if (tcpsocket->state() == QAbstractSocket::ConnectedState) {
+        QString message = "song_path:" + songpath;
+        tcpsocket->write(message.toUtf8());
+        networkloglist->addItem("sent: " + message);
+        qDebug() << "sent song info:" << message;
+    } else {
+        qDebug() << "cannot send song info: not connected";
+    }
+}
+void musicplayer::displayerror(QAbstractSocket::SocketError socketerror) {
+    QString errorstring;
+    switch (socketerror) {
+    case QAbstractSocket::RemoteHostClosedError:
+        errorstring = "remote host closed connection";
+        break;
+    case QAbstractSocket::HostNotFoundError:
+        errorstring = "host not found";
+        break;
+    case QAbstractSocket::ConnectionRefusedError:
+        errorstring = "connection refused";
+        break;
+    case QAbstractSocket::SocketTimeoutError:
+        errorstring = "socket timeout";
+        break;
+    default:
+        errorstring = tcpsocket->errorString();
+    }
+    networkstatuslabel->setText("status: error - " + errorstring);
+    networkloglist->addItem("network error: " + errorstring);
+    qDebug() << "network error:" << errorstring;
+}
+void musicplayer::readclientdata() {
+    QByteArray data = tcpsocket->readAll();
+    QString readmessage = QString::fromUtf8(data).trimmed();
+    networkloglist->addItem("Received: " + readmessage);
+    qDebug() << "received from network:" << readmessage;
+    if (readmessage.startsWith("song_path:")) {
+        QString songpath = readmessage.mid(QString("song_path:").length());
+        processreceivedsonginfo(songpath);
     }
 }
