@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/next.png</file>
+        <file>icons/pause.png</file>
+        <file>icons/play.png</file>
+        <file>icons/prevoius.png</file>
+        <file>icons/repeat_1.png</file>
+        <file>icons/repeat_all.png</file>
+        <file>icons/repeat_no.png</file>
+        <file>icons/save.png</file>
+        <file>icons/shuffle_off.png</file>
+        <file>icons/shuffle_on.png</file>
+        <file>icons/stop.png</file>
+        <file>icons/temp_save.png</file>
+    </qresource>
+</RCC>

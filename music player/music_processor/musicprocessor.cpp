@@ -19,6 +19,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QIcon>
 //singeton
 musicplayer* musicplayer::instance = nullptr;
 //coonstruor
@@ -31,15 +32,36 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     repeatstate_temp = norepeat;
     isshuffleon_temp = false;
     songlist = new QListWidget(this);
-    playbutton = new QPushButton("play", this);
-    pausebutton = new QPushButton("pause", this);
-    stopbutton = new QPushButton("stop", this);
+    playbutton = new QPushButton(this);
+    playbutton->setIcon(QIcon(":/icons/play.png"));
+    playbutton->setIconSize(QSize(32, 32));
+    QIcon testIcon(":/icons/play.png");
+    qDebug() << "Testing play.png icon:";
+    qDebug() << "  Is Null:" << testIcon.isNull(); // Should be false
+    qDebug() << "  Actual Size (32x32):" << testIcon.actualSize(QSize(32, 32)); // Should be QSize(32, 32)
+    qDebug() << "  Actual Size (any):" << testIcon.actualSize(testIcon.availableSizes().isEmpty() ? QSize() : testIcon.availableSizes().first()); // Should show a size if available
+    qDebug() << "Play button icon after set, Is Null:" << playbutton->icon().isNull(); // Should be false
+    qDebug() << "Play button icon after set, Actual Size (32x32):" << playbutton->icon().actualSize(QSize(32, 32)); // Should be QSize(32, 32)
+    pausebutton = new QPushButton(this);
+    pausebutton->setIcon(QIcon(":/icons/pause.png"));
+    pausebutton->setIconSize(QSize(32, 32));
+    stopbutton = new QPushButton(this);
+    stopbutton->setIcon(QIcon(":/icons/stop.png"));
+    stopbutton->setIconSize(QSize(32, 32));
     positionslider = new QSlider(Qt::Horizontal, this);
     currentsonglabel = new QLabel("none", this);
-    nextbutton = new QPushButton("next", this);
-    previousbutton = new QPushButton("prevoius", this);
-    repeatbutton = new QPushButton("repeat: no", this);
-    shufflebutton = new QPushButton("shuffle: off", this);
+    nextbutton = new QPushButton( this);
+    nextbutton->setIcon(QIcon(":/icons/next.png"));
+    nextbutton->setIconSize(QSize(32, 32));
+    previousbutton = new QPushButton( this);
+    previousbutton->setIcon(QIcon(":/icons/prevoius.png"));
+    previousbutton->setIconSize(QSize(32, 32));
+    repeatbutton = new QPushButton( this);
+    repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
+    repeatbutton->setIconSize(QSize(32, 32));
+    shufflebutton = new QPushButton( this);
+    shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
+    shufflebutton->setIconSize(QSize(32, 32));
     //audioplayer inialziation
     player = new QMediaPlayer(this);
     audiooutput = new QAudioOutput(this);
@@ -70,8 +92,12 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     controls->addWidget(stopbutton);
     controls->addWidget(nextbutton);
     controls->addWidget(repeatbutton);
-    addtofavoritebutton = new QPushButton("save", this);
-    temp_addbutton = new QPushButton("save to temp", this);
+    addtofavoritebutton = new QPushButton( this);
+    addtofavoritebutton->setIcon(QIcon(":/icons/save.png"));
+    addtofavoritebutton->setIconSize(QSize(32, 32));
+    temp_addbutton = new QPushButton(this);
+    temp_addbutton->setIcon(QIcon(":/icons/temp_save.png"));
+    temp_addbutton->setIconSize(QSize(32, 32));
     mainTabLayout->addWidget(new QLabel("songs", this));
     mainTabLayout->addWidget(songlist);
     mainTabLayout->addWidget(addtofavoritebutton);
@@ -114,13 +140,27 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     favoritesLayout->addWidget(new QLabel("favorite songs", this));
     favoritesLayout->addWidget(favoritelist);
     QHBoxLayout *fav_controls = new QHBoxLayout();
-    fav_shufflebutton = new QPushButton("shuffle: off", this);
-    fav_previousbutton = new QPushButton("previous", this);
-    fav_playbutton = new QPushButton("play", this);
-    fav_pausebutton = new QPushButton("pause", this);
-    fav_stopbutton = new QPushButton("stop", this);
-    fav_nextbutton = new QPushButton("next", this);
-    fav_repeatbutton = new QPushButton("repeat: no", this);
+    fav_shufflebutton = new QPushButton( this);
+    fav_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
+    fav_shufflebutton->setIconSize(QSize(32, 32));
+    fav_previousbutton = new QPushButton( this);
+    fav_previousbutton->setIcon(QIcon(":/icons/prevoius.png"));
+    fav_previousbutton->setIconSize(QSize(32, 32));
+    fav_playbutton = new QPushButton( this);
+    fav_playbutton->setIcon(QIcon(":/icons/play.png"));
+    fav_playbutton->setIconSize(QSize(32, 32));
+    fav_pausebutton = new QPushButton( this);
+    fav_pausebutton->setIcon(QIcon(":/icons/pause.png"));
+    fav_pausebutton->setIconSize(QSize(32, 32));
+    fav_stopbutton = new QPushButton( this);
+    fav_stopbutton->setIcon(QIcon(":/icons/stop.png"));
+    fav_stopbutton->setIconSize(QSize(32, 32));
+    fav_nextbutton = new QPushButton( this);
+    fav_nextbutton->setIcon(QIcon(":/icons/next.png"));
+    fav_nextbutton->setIconSize(QSize(32, 32));
+    fav_repeatbutton = new QPushButton( this);
+    fav_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
+    fav_repeatbutton->setIconSize(QSize(32, 32));
     fav_slider = new QSlider(Qt::Horizontal, this);
     fav_controls->addWidget(fav_shufflebutton);
     fav_controls->addWidget(fav_previousbutton);
@@ -141,13 +181,27 @@ musicplayer::musicplayer(QWidget *parent) : QWidget(parent) {
     tempfavoritelist = new QListWidget(this);
     temp_slider = new QSlider(Qt::Horizontal, this);
     QHBoxLayout *temp_controls = new QHBoxLayout();
-    temp_shufflebutton = new QPushButton("shuffle: off", this);
-    temp_previousbutton = new QPushButton("previous", this);
-    temp_playbutton = new QPushButton("play", this);
-    temp_pausebutton = new QPushButton("pause", this);
-    temp_stopbutton = new QPushButton("stop", this);
-    temp_nextbutton = new QPushButton("next", this);
-    temp_repeatbutton = new QPushButton("repeat: no", this);
+    temp_shufflebutton = new QPushButton( this);
+    temp_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
+    temp_shufflebutton->setIconSize(QSize(32, 32));
+    temp_previousbutton = new QPushButton( this);
+    temp_previousbutton->setIcon(QIcon(":/icons/prevoius.png"));
+    temp_previousbutton->setIconSize(QSize(32, 32));
+    temp_playbutton = new QPushButton( this);
+    temp_playbutton->setIcon(QIcon(":/icons/play.png"));
+    temp_playbutton->setIconSize(QSize(32, 32));
+    temp_pausebutton = new QPushButton( this);
+    temp_pausebutton->setIcon(QIcon(":/icons/pause.png"));
+    temp_pausebutton->setIconSize(QSize(32, 32));
+    temp_stopbutton = new QPushButton(this);
+    temp_stopbutton->setIcon(QIcon(":/icons/stop.png"));
+    temp_stopbutton->setIconSize(QSize(32, 32));
+    temp_nextbutton = new QPushButton( this);
+    temp_nextbutton->setIcon(QIcon(":/icons/next.png"));
+    temp_nextbutton->setIconSize(QSize(32, 32));
+    temp_repeatbutton = new QPushButton( this);
+    temp_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
+    temp_repeatbutton->setIconSize(QSize(32, 32));
     temp_controls->addWidget(temp_shufflebutton);
     temp_controls->addWidget(temp_previousbutton);
     temp_controls->addWidget(temp_playbutton);
@@ -350,7 +404,7 @@ void musicplayer::setsliderrange(qint64 duration) {
 void musicplayer::handleplaybutton() {
     if (player->playbackState() == QMediaPlayer::PausedState) {
         player->play();
-        qDebug() << "Resuming play";
+        qDebug() << "resuming play";
     } else {
         playselectedsongfromlist();
     }
@@ -416,15 +470,15 @@ void musicplayer::changerepeatstate() {
     switch (currentrepeatstate) {
     case norepeat:
         currentrepeatstate = repeatone;
-        repeatbutton->setText("repeat: 1");
+        repeatbutton->setIcon(QIcon(":/icons/repeat_1.png"));
         break;
     case repeatone:
         currentrepeatstate = repeatall;
-        repeatbutton->setText("repeat: all");
+        repeatbutton->setIcon(QIcon(":/icons/repeat_all.png"));
         break;
     case repeatall:
         currentrepeatstate = norepeat;
-        repeatbutton->setText("repeat: no");
+        repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
         break;
     }
 }
@@ -432,9 +486,9 @@ void musicplayer::changerepeatstate() {
 void musicplayer::shufflestate() {
     isshuffleon = !isshuffleon;
     if (isshuffleon) {
-        shufflebutton->setText("shuffle: on");
+        shufflebutton->setIcon(QIcon(":/icons/shuffle_on.png"));
     } else {
-        shufflebutton->setText("shuffle: off");
+        shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
     }
 }
 //pakhs random
@@ -540,22 +594,25 @@ void musicplayer::fav_changerepeatstate() {
     switch (repeatstate_fav) {
     case norepeat:
         repeatstate_fav = repeatone;
-        fav_repeatbutton->setText("repeat: 1");
+        fav_repeatbutton->setIcon(QIcon(":/icons/repeat_1.png"));
         break;
     case repeatone:
         repeatstate_fav = repeatall;
-        fav_repeatbutton->setText("repeat: all");
+        fav_repeatbutton->setIcon(QIcon(":/icons/repeat_all.png"));
         break;
     case repeatall:
         repeatstate_fav = norepeat;
-        fav_repeatbutton->setText("repeat: no");
+        fav_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
         break;
     }
 }
 void musicplayer::fav_shufflestate() {
     isshuffleon_fav = !isshuffleon_fav;
-    QString text = isshuffleon_fav ? "shuffle: on" : "shuffle: off";
-    fav_shufflebutton->setText(text);
+    if (isshuffleon_fav) {
+        fav_shufflebutton->setIcon(QIcon(":/icons/shuffle_on.png"));
+    } else {
+        fav_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
+    }
 }
 void musicplayer::savetotempfavorites() {
     QListWidgetItem *item = songlist->currentItem();
@@ -609,22 +666,25 @@ void musicplayer::temp_changerepeatstate() {
     switch (repeatstate_temp) {
     case norepeat:
         repeatstate_temp = repeatone;
-        temp_repeatbutton->setText("repeat: 1");
+        temp_repeatbutton->setIcon(QIcon(":/icons/repeat_1.png"));
         break;
     case repeatone:
         repeatstate_temp = repeatall;
-        temp_repeatbutton->setText("repeat: all");
+        temp_repeatbutton->setIcon(QIcon(":/icons/repeat_all.png"));
         break;
     case repeatall:
         repeatstate_temp = norepeat;
-        temp_repeatbutton->setText("repeat: no");
+        temp_repeatbutton->setIcon(QIcon(":/icons/repeat_no.png"));
         break;
     }
 }
 void musicplayer::temp_shufflestate() {
     isshuffleon_temp = !isshuffleon_temp;
-    QString text = isshuffleon_temp ? "shuffle: on" : "shuffle: off";
-    temp_shufflebutton->setText(text);
+    if (isshuffleon_temp) {
+        temp_shufflebutton->setIcon(QIcon(":/icons/shuffle_on.png"));
+    } else {
+        temp_shufflebutton->setIcon(QIcon(":/icons/shuffle_off.png"));
+    }
 }
 void musicplayer::handletempplaybutton() {
     if (player->playbackState() == QMediaPlayer::PausedState) {
